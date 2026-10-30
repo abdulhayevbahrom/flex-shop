@@ -22,6 +22,7 @@ export default function App() {
     if (!host) return;
 
     host.innerHTML = gameTemplate;
+    window.__FLEX_API__ = api;
 
     const previousRuntime = document.getElementById(RUNTIME_ID);
     previousRuntime?.remove();
@@ -33,6 +34,7 @@ export default function App() {
 
     return () => {
       runtime.remove();
+      delete window.__FLEX_API__;
       host.replaceChildren();
     };
   }, [botState.loading, botState.enabled]);

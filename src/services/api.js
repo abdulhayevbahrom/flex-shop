@@ -1,19 +1,24 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 async function request(path, options = {}) {
+  const telegramInitData = window.Telegram?.WebApp?.initData;
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(telegramInitData ? { "X-Telegram-Init-Data": telegramInitData } : {}),
       ...options.headers,
     },
   });
 
+  const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    const error = new Error(payload.error || `API request failed: ${response.status}`);
+    error.code = payload.code;
+    error.status = response.status;
+    throw error;
   }
-
-  return response.json();
+  return payload;
 }
 
 export const api = {
@@ -24,6 +29,11 @@ export const api = {
     request("/api/players/verify", {
       method: "POST",
       body: JSON.stringify({ playerId }),
+    }),
+  verifyTelegramUser: (username) =>
+    request("/api/telegram/verify", {
+      method: "POST",
+      body: JSON.stringify({ username }),
     }),
   createOrder: (payload) =>
     request("/api/orders", {

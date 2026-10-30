@@ -111,6 +111,9 @@ const D = {
     "Username должен начинаться с @ (мин. 5 символов)",
   ],
   fnd: ["topildi", "найден"],
+  unf: ["Topilmadi", "Не найден"],
+  uchk: ["Avval username’ni tekshiring", "Сначала проверьте username"],
+  uerr: ["Tekshirib bo‘lmadi. Qayta urinib ko‘ring", "Не удалось проверить. Попробуйте снова"],
 };
 let L = 0;
 const t = (k) => D[k][L];
@@ -151,6 +154,16 @@ let warn = "",
   meth = 0,
   tmr,
   cur = "home";
+let verifiedTelegramUsername = "";
+
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 /* Telegram user (WebApp initDataUnsafe) with browser fallback */
 const tg = window.Telegram && Telegram.WebApp;
@@ -438,11 +451,28 @@ function pay() {
   if (sel === null) return;
   buy("PUBG " + UC[sel][0] + " UC", UC[sel][1], [["pidl", v]]);
 }
-function vu() {
+async function vu() {
   const v = $("#un").value.trim();
   if (!/^@[A-Za-z0-9_]{5,}$/.test(v)) return toast(t("unv"));
-  $("#ur").innerHTML =
-    `<div class="mt-3 p-3 rounded-xl font-bold" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.5);color:var(--ok)">${v} ✅ ${t("fnd")}</div>`;
+  const button = $("#un").nextElementSibling;
+  verifiedTelegramUsername = "";
+  button.disabled = true;
+  button.textContent = "...";
+  $("#ur").innerHTML = "";
+  try {
+    const result = await window.__FLEX_API__.verifyTelegramUser(v);
+    const profile = result.profile;
+    verifiedTelegramUsername = profile.username.toLowerCase();
+    $("#ur").innerHTML =
+      `<div class="mt-3 p-3 rounded-xl font-bold" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.5);color:var(--ok)"><div>${esc(profile.name || profile.username)}</div><div class="text-sm" style="opacity:.8">${esc(profile.username)} ✅ ${t("fnd")}</div></div>`;
+  } catch (error) {
+    const message = error?.code === "TELEGRAM_USER_NOT_FOUND" ? t("unf") : t("uerr");
+    $("#ur").innerHTML =
+      `<div class="mt-3 p-3 rounded-xl font-bold" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.6);color:var(--er)">${esc(v)} — ${message}</div>`;
+  } finally {
+    button.disabled = false;
+    button.textContent = t("chk");
+  }
 }
 
 /* BALANCE LOGIC: user_balance >= product_price -> success, otherwise top-up flow */
@@ -456,6 +486,11 @@ function buyP(m, p) {
   const v = $("#un").value.trim();
   if (!/^@[A-Za-z0-9_]{5,}$/.test(v)) {
     toast(t("unv"));
+    $("#un").focus();
+    return;
+  }
+  if (verifiedTelegramUsername !== v.toLowerCase()) {
+    toast(t("uchk"));
     $("#un").focus();
     return;
   }
@@ -679,6 +714,10 @@ $("#cid").addEventListener("input", () => {
     warn = "";
     chkRender();
   }
+});
+$("#un").addEventListener("input", () => {
+  verifiedTelegramUsername = "";
+  $("#ur").innerHTML = "";
 });
 avatars();
 setImg($("#hero"), [HERO_DATA, ...IMG.hero], heroArt());
