@@ -442,6 +442,39 @@
         letter-spacing: 0.02em;
         filter: drop-shadow(0 0 10px rgba(245, 196, 81, 0.3));
       }
+      .home-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+      }
+      .home-user {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .home-username {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 15px;
+      }
+      .home-brand {
+        flex: 0 0 auto;
+        margin: 0;
+        white-space: nowrap;
+        font-size: 21px;
+        line-height: 1;
+      }
+      @media (max-width: 370px) {
+        .home-header { gap: 10px; }
+        .home-user { gap: 9px; }
+        .home-username { font-size: 14px; }
+        .home-brand { font-size: 18px; }
+      }
       @keyframes tw {
         0%,
         100% {
