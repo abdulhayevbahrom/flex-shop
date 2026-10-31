@@ -48,4 +48,5 @@ export const api = {
       body: JSON.stringify({ amount }),
     }),
   getTopUp: (topUpId) => request(`/api/top-ups/${encodeURIComponent(topUpId)}`),
+  getTopUps: () => request("/api/top-ups"),
 };

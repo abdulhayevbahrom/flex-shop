@@ -139,6 +139,7 @@ let warn = "",
   vok = false,
   bal = 0,
   H = [],
+  serverTopUps = [],
   hf = "all",
   amt = 0,
   currentTopUp = null,
@@ -262,6 +263,13 @@ async function loadCurrentProfile() {
     isAdmin = result.user?.isAdmin === true;
     upd();
     drawTabs({ pubg: "home", prem: "home", chk: "home" }[cur] || cur);
+  } catch (_) {}
+}
+async function loadTopUps() {
+  try {
+    const result = await window.__FLEX_API__.getTopUps();
+    serverTopUps = result.items ?? [];
+    upd();
   } catch (_) {}
 }
 async function loadProducts() {
@@ -594,6 +602,11 @@ async function inv() {
     button.textContent = t("go");
     return toast(error?.message || t("uerr"));
   }
+  showTopUp(currentTopUp);
+  loadTopUps();
+}
+function showTopUp(topUp) {
+  currentTopUp = topUp;
   const c = currentTopUp.card;
   amt = Number(currentTopUp.amountUzs);
   const cardNumber = String(c.number || "");
@@ -610,6 +623,11 @@ async function inv() {
   tick();
   watchTopUp();
 }
+function reopenTopUp(topUpId) {
+  const topUp = serverTopUps.find((item) => item.id === topUpId);
+  if (!topUp || topUp.status !== "pending") return;
+  showTopUp(topUp);
+}
 async function watchTopUp() {
   clearInterval(topUpPollTimer);
   const check = async () => {
@@ -621,9 +639,11 @@ async function watchTopUp() {
         clearInterval(topUpPollTimer);
         clearInterval(tmr);
         await loadCurrentProfile();
+        await loadTopUps();
         cl();
         status("ok", t("ok"), "+ " + fm(currentTopUp.amountUzs) + " · " + t("cur") + ": " + fm(bal));
       } else if (["expired", "rejected"].includes(currentTopUp.status)) {
+        await loadTopUps();
         clearInterval(topUpPollTimer);
         clearInterval(tmr);
         const liveStatus = $("#topup-live-status");
@@ -694,7 +714,7 @@ function status(k, title, sub) {
 }
 /* history / wallet */
 const row = (x) =>
-  `<div class="glass p-3 flex items-center gap-3"><span class="dot" style="background:${ST[x.s]};box-shadow:0 0 8px ${ST[x.s]}"></span><div class="flex-1"><div class="font-bold text-sm">${tn(x.t)}</div><div class="mu text-xs">${x.d} · ${t("f_" + x.s)}</div></div><div class="font-bold text-sm" style="color:${x.a > 0 ? "var(--ok)" : "var(--tx)"}">${x.a > 0 ? "+" : "−"}${fm(x.a)}</div></div>`;
+  `<div class="glass p-3 flex items-center gap-3"${x.topUpId && x.s === "p" ? ` role="button" onclick="reopenTopUp('${x.topUpId}')"` : ""}><span class="dot" style="background:${ST[x.s]};box-shadow:0 0 8px ${ST[x.s]}"></span><div class="flex-1"><div class="font-bold text-sm">${tn(x.t)}</div><div class="mu text-xs">${x.d} · ${t("f_" + x.s)}</div></div><div class="font-bold text-sm" style="color:${x.s === "p" ? "var(--gd)" : x.s === "c" ? "var(--er)" : x.a > 0 ? "var(--ok)" : "var(--tx)"}">${x.s === "p" || x.s === "c" ? "" : x.a > 0 ? "+" : "−"}${fm(x.a)}</div></div>`;
 const crate = () =>
   `<div class="text-center py-10"><svg width="150" height="150" viewBox="0 0 150 150"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE08A"/><stop offset="1" stop-color="#B8730B"/></linearGradient></defs><path d="M20 55Q75-5 130 55Z" fill="#8B5CF6" opacity=".85"/><path d="M20 55 65 100M130 55 85 100M75 40V100" stroke="#C4B5FD" stroke-width="1.5"/><path d="M50 100h50v36H50z" fill="url(#g1)"/><path d="M50 100l12-10h50l-12 10z" fill="#FFE08A"/><path d="M100 100l12-10v36l-12 10z" fill="#8a5508"/><path d="M50 112h50M75 100v36" stroke="#4a2c00" stroke-width="3"/></svg><div class="font-bold mt-2">${t("em")}</div><div class="mu text-sm">${t("em2")}</div></div>`;
 function upd() {
@@ -705,7 +725,15 @@ function upd() {
         `<button class="btn chip ${hf === k ? "a" : ""}" onclick="hf='${k}';upd()"><span class="dot" style="background:${k === "all" ? "#34d399" : ST[k]}"></span>${t("f_" + k)}</button>`,
     )
     .join("");
-  const A = H.filter((x) => hf === "all" || x.s === hf);
+  const topUpRows = serverTopUps.map((item) => ({
+    t: "{topH}",
+    a: Number(item.amountUzs),
+    s: item.status === "completed" ? "d" : item.status === "pending" ? "p" : "c",
+    d: new Date(item.createdAt).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+    topUpId: item.id,
+  }));
+  const allHistory = [...topUpRows, ...H];
+  const A = allHistory.filter((x) => hf === "all" || x.s === hf);
   $("#hl").innerHTML = A.length ? A.map(row).join("") : crate();
   const W = H.filter((x) => x.s !== "c");
   $("#wl").innerHTML = W.length
@@ -802,4 +830,5 @@ avatars();
 setImg($("#hero"), [HERO_DATA, ...IMG.hero], heroArt());
 applyLang();
 loadCurrentProfile();
+loadTopUps();
 loadProducts();
