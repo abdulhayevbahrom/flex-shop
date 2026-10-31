@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { adminApi } from "./adminApi";
-import { EmptyState, ErrorBox, Icon, MetricCard, PageTitle, Toggle, usd } from "./admin-ui";
+import { EmptyState, ErrorBox, Icon, MetricCard, Modal, PageTitle, Toggle, money, usd } from "./admin-ui";
 import PaymentCardsPage from "./PaymentCardsPage";
 import OrdersPage from "./OrdersPage";
 import StatisticsPage from "./StatisticsPage";
@@ -39,22 +39,35 @@ function Login({ onLogin }) {
 function PackageRow({ item, onSave, onDelete }) {
   const [price, setPrice] = useState(String(item.retailPriceUzs));
   const [order, setOrder] = useState(String(item.sortOrder));
+  const [visible, setVisible] = useState(item.visible);
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setPrice(String(item.retailPriceUzs)); setOrder(String(item.sortOrder)); }, [item.retailPriceUzs, item.sortOrder]);
-  async function save(changes = {}) {
+  useEffect(() => { setPrice(String(item.retailPriceUzs)); setOrder(String(item.sortOrder)); setVisible(item.visible); }, [item.retailPriceUzs, item.sortOrder, item.visible]);
+  function openEditor() {
+    setPrice(String(item.retailPriceUzs)); setOrder(String(item.sortOrder)); setVisible(item.visible); setEditing(true);
+  }
+  async function save(event) {
+    event.preventDefault();
     setBusy(true);
-    try { await onSave(item.id, { retailPriceUzs: Number(price), sortOrder: Number(order), ...changes }); }
+    try { await onSave(item.id, { retailPriceUzs: Number(price), sortOrder: Number(order), visible }); setEditing(false); }
     finally { setBusy(false); }
   }
   const invalid = price.trim() === "" || !Number.isSafeInteger(Number(price)) || Number(price) < 0 || !Number.isSafeInteger(Number(order));
-  return <tr>
+  return <><tr>
     <td data-label="Paket"><div className="product-cell"><span className={`product-icon ${item.type === "pubg_uc" ? "amber" : "violet"}`}><Icon name={item.type === "pubg_uc" ? "game" : "shield"} size={17}/></span><div><strong>{item.name}</strong><small>{item.type === "pubg_uc" ? "PUBG Mobile" : "Telegram Premium"}</small></div></div></td>
     <td data-label="API narxi"><span className="api-price">{usd(item.providerPriceUsd)}</span></td>
-    <td data-label="Mijoz narxi"><div className="inline-price"><input aria-label={`${item.name} sotuv narxi`} type="number" min="0" step="1" value={price} onChange={(e) => setPrice(e.target.value)} /><span>UZS</span></div></td>
-    <td data-label="Tartib"><input className="order-input" aria-label={`${item.name} tartibi`} type="number" step="1" value={order} onChange={(e) => setOrder(e.target.value)} /></td>
-    <td data-label="Ko‘rinadi"><Toggle checked={item.visible} disabled={busy || invalid} label={`${item.name} mijozga ko‘rinishi`} onChange={(visible) => save({ visible })}/></td>
-    <td data-label="Amallar"><div className="row-actions"><button className="secondary small" disabled={busy || invalid} onClick={() => save()}>{busy ? <Icon name="loader" size={14}/> : <Icon name="check" size={14}/>} Saqlash</button><button className="icon-button danger-ghost" disabled={busy} onClick={() => onDelete(item.id, item.name)} aria-label={`${item.name} paketini o‘chirish`}><Icon name="trash" size={15}/></button></div></td>
-  </tr>;
+    <td data-label="Mijoz narxi"><strong className="retail-price">{money(item.retailPriceUzs)}</strong></td>
+    <td data-label="Tartib"><span className="package-order">#{item.sortOrder}</span></td>
+    <td data-label="Holat"><span className={`package-visibility ${item.visible ? "visible" : "inactive"}`}><i/>{item.visible ? "Ko‘rinadi" : "Yashirilgan"}</span></td>
+    <td data-label="Amallar"><div className="row-actions"><button className="secondary small" onClick={openEditor}><Icon name="pencil" size={14}/> Tahrirlash</button><button className="icon-button danger-ghost" disabled={busy} onClick={() => onDelete(item.id, item.name)} aria-label={`${item.name} paketini o‘chirish`}><Icon name="trash" size={15}/></button></div></td>
+  </tr>{editing && <Modal title="Paketni tahrirlash" subtitle="Mijoz narxi, tartibi va katalogdagi holatini boshqaring." onClose={() => !busy && setEditing(false)} footer={<><button className="secondary" type="button" disabled={busy} onClick={() => setEditing(false)}>Bekor qilish</button><button className="save" type="submit" form={`package-edit-${item.id}`} disabled={busy || invalid}>{busy ? <Icon name="loader" size={15}/> : <Icon name="check" size={15}/>} {busy ? "Saqlanmoqda…" : "Saqlash"}</button></>}>
+    <div className="package-edit-summary"><span className={`product-icon ${item.type === "pubg_uc" ? "amber" : "violet"}`}><Icon name={item.type === "pubg_uc" ? "game" : "shield"}/></span><div><strong>{item.name}</strong><span>{item.type === "pubg_uc" ? "PUBG Mobile" : "Telegram Premium"}</span></div><div><small>API narxi</small><b>{usd(item.providerPriceUsd)}</b></div></div>
+    <form id={`package-edit-${item.id}`} className="package-edit-form" onSubmit={save}>
+      <label>Mijoz narxi <div className="price-field"><input autoFocus aria-label={`${item.name} sotuv narxi`} type="number" min="0" step="1" value={price} onChange={(e) => setPrice(e.target.value)}/><span>UZS</span></div><small>Mijozdan yechiladigan yakuniy summa</small></label>
+      <label>Tartib raqami <input aria-label={`${item.name} tartibi`} type="number" step="1" value={order} onChange={(e) => setOrder(e.target.value)}/><small>Kichik raqam katalogda oldinroq chiqadi</small></label>
+      <div className="package-edit-visibility"><div><strong>Mijozlarga ko‘rsatish</strong><small>O‘chirilsa paket do‘kon katalogidan yashiriladi</small></div><Toggle checked={visible} disabled={busy} label={`${item.name} mijozga ko‘rinishi`} onChange={setVisible}/></div>
+    </form>
+  </Modal>}</>;
 }
 
 function PackagesPage() {
@@ -75,7 +88,7 @@ function PackagesPage() {
   const configured = useMemo(() => new Set(items.map((x) => `${x.type}:${x.providerProductId}`)), [items]);
   async function save(id, data) {
     try { const r = await adminApi.updatePackage(id, data); setItems((old) => old.map((x) => x.id === id ? r.item : x)); }
-    catch (err) { setError(err.message); }
+    catch (err) { setError(err.message); throw err; }
   }
   async function remove(id, name) {
     if (!window.confirm(`“${name}” paketini o‘chirasizmi?`)) return;
