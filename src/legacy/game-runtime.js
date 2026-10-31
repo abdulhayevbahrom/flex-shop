@@ -130,19 +130,8 @@ const now = () =>
   });
 const CARDS = [{ l: "UZCARD / HUMO", n: "8600 1234 5678 9012" }];
 const HOLDER = "FLEX_OWNER";
-const UC = [
-  [60, 13000],
-  [325, 59000],
-  [660, 116000],
-  [1800, 290000],
-  [3850, 565000],
-  [8100, 1135000],
-];
-const PR = [
-  [3, 190000],
-  [6, 260000],
-  [12, 450000],
-];
+let UC = [];
+let PR = [];
 const ST = { p: "#F5C451", d: "#22c55e", c: "#ef4444" };
 let warn = "",
   vidv = "",
@@ -272,6 +261,27 @@ async function loadCurrentProfile() {
     upd();
     drawTabs({ pubg: "home", prem: "home", chk: "home" }[cur] || cur);
   } catch (_) {}
+}
+async function loadProducts() {
+  try {
+    const result = await window.__FLEX_API__.getProducts();
+    const catalog = result.products ?? {};
+    UC = (catalog.pubg?.offers ?? []).map((item) => {
+      const amount = Number(String(item.name ?? "").replaceAll(",", "").match(/\d+/)?.[0] ?? 0);
+      return [amount, Number(item.priceUzs), String(item.id), item.name];
+    }).filter(([amount, price]) => amount > 0 && Number.isFinite(price));
+    PR = (catalog.telegramPremium ?? []).map((item) => [Number(item.months), Number(item.priceUzs)])
+      .filter(([months, price]) => months > 0 && Number.isFinite(price));
+  } catch (_) {
+    UC = [];
+    PR = [];
+  }
+  $("#pubg-card").classList.toggle("hidden", UC.length === 0);
+  $("#premium-card").classList.toggle("hidden", PR.length === 0);
+  if ((cur === "pubg" && UC.length === 0) || (cur === "prem" && PR.length === 0)) nav("home");
+  sel = null;
+  products();
+  selRender();
 }
 function nav(id) {
   cur = id;
@@ -745,3 +755,4 @@ avatars();
 setImg($("#hero"), [HERO_DATA, ...IMG.hero], heroArt());
 applyLang();
 loadCurrentProfile();
+loadProducts();
