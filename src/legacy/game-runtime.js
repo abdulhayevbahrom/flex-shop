@@ -40,6 +40,7 @@ const D = {
   w: ["Hamyon", "Кошелёк"],
   hi: ["Tarix", "История"],
   pr: ["Profil", "Профиль"],
+  adm: ["Admin", "Админ"],
   bal: ["Balans", "Баланс"],
   top: ["+ To'ldirish", "+ Пополнить"],
   pt: [
@@ -155,6 +156,7 @@ let warn = "",
   tmr,
   cur = "home";
 let verifiedTelegramUsername = "";
+let isAdmin = false;
 
 function esc(value) {
   return String(value ?? "")
@@ -238,18 +240,32 @@ const ICON = {
   wal: '<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l2-3h12v3M16 13.5h2"/>',
   hist: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   prof: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  admin: '<path d="M12 3l7 3v5c0 4.6-2.8 8-7 10-4.2-2-7-5.4-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
 };
-const TABS = [
+const BASE_TABS = [
   ["home", "h"],
   ["wal", "w"],
   ["hist", "hi"],
   ["prof", "pr"],
 ];
 function drawTabs(a) {
-  $("#tabs").innerHTML = TABS.map(
+  const tabs = isAdmin ? [...BASE_TABS, ["admin", "adm"]] : BASE_TABS;
+  $("#tabs").innerHTML = tabs.map(
     ([id, k]) =>
-      `<button class="btn tab ${id === a ? "a" : ""}" onclick="nav('${id}')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[id]}</svg>${t(k)}</button>`,
+      `<button class="btn tab ${id === a ? "a" : ""}" onclick="${id === "admin" ? "openAdmin()" : `nav('${id}')`}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[id]}</svg>${t(k)}</button>`,
   ).join("");
+}
+function openAdmin() {
+  window.location.assign("/admin");
+}
+async function loadCurrentProfile() {
+  try {
+    const result = await window.__FLEX_API__.getProfile();
+    bal = Number(result.user?.balanceUzs ?? 0);
+    isAdmin = result.user?.isAdmin === true;
+    upd();
+    drawTabs({ pubg: "home", prem: "home", chk: "home" }[cur] || cur);
+  } catch (_) {}
 }
 function nav(id) {
   cur = id;
@@ -722,3 +738,4 @@ $("#un").addEventListener("input", () => {
 avatars();
 setImg($("#hero"), [HERO_DATA, ...IMG.hero], heroArt());
 applyLang();
+loadCurrentProfile();
