@@ -1,10 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 async function request(path, options = {}) {
+  const token = sessionStorage.getItem("admin_token");
   const response = await fetch(`${API_URL}/api/admin${path}`, {
     ...options,
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...options.headers },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers },
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -17,8 +18,15 @@ async function request(path, options = {}) {
 
 export const adminApi = {
   me: () => request("/auth/me"),
-  login: (username, password) => request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
-  logout: () => request("/auth/logout", { method: "POST" }),
+  login: async (username, password) => {
+    const result = await request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) });
+    if (result.token) sessionStorage.setItem("admin_token", result.token);
+    return result;
+  },
+  logout: async () => {
+    try { return await request("/auth/logout", { method: "POST" }); }
+    finally { sessionStorage.removeItem("admin_token"); }
+  },
   packages: () => request("/packages"),
   providerPackages: () => request("/provider-packages"),
   createPackage: (data) => request("/packages", { method: "POST", body: JSON.stringify(data) }),

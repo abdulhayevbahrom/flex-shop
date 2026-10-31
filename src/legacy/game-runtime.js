@@ -255,8 +255,14 @@ function drawTabs(a) {
       `<button class="btn tab ${id === a ? "a" : ""}" onclick="${id === "admin" ? "openAdmin()" : `nav('${id}')`}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[id]}</svg>${t(k)}</button>`,
   ).join("");
 }
-function openAdmin() {
-  window.location.assign("/admin");
+async function openAdmin() {
+  try {
+    const result = await window.__FLEX_API__.loginAdminWithTelegram();
+    sessionStorage.setItem("admin_token", result.token);
+    window.location.assign("/admin");
+  } catch (_) {
+    toast("Admin panelga kirib bo‘lmadi");
+  }
 }
 async function loadCurrentProfile() {
   try {
