@@ -381,7 +381,7 @@ const star =
 function products() {
   $("#ug").innerHTML = UC.map(
     ([u, p], i) =>
-      `<button class="btn pc ${sel === i ? "sel" : ""}" onclick="pick(${i})"><div class="pi">${art(i, "uc-package-art")}</div><div class="p1">${u} UC</div><div class="p2">${fm(p)}</div></button>`,
+      `<button class="btn pc ${sel === i ? "sel" : ""}" onclick="pick(${i})"><div class="pi">${ucArt(i, "uc-package-image")}</div><div class="p1">${u} UC</div><div class="p2">${fm(p)}</div></button>`,
   ).join("");
   $("#pg").innerHTML = PR.map(
     ([m, p]) =>
