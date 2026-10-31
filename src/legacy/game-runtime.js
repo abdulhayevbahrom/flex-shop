@@ -143,6 +143,7 @@ let warn = "",
   amt = 0,
   currentTopUp = null,
   tmr,
+  topUpPollTimer,
   cur = "home";
 let verifiedTelegramUsername = "";
 let verifiedPlayerName = "";
@@ -308,6 +309,8 @@ function sheet(h) {
 }
 function cl() {
   clearInterval(tmr);
+  clearInterval(topUpPollTimer);
+  topUpPollTimer = undefined;
   $("#ov").classList.remove("on");
 }
 
@@ -602,8 +605,38 @@ async function inv() {
 <div class="text-xl font-bold tracking-widest mb-3">${esc(formattedCardNumber)}</div>
 <div class="flex justify-between items-center"><div><div class="text-[10px]" style="color:#8A94A3">${t("hold")}</div><div class="text-sm font-bold">${esc(c.holder || "")}</div></div><button class="btn gold rounded-lg px-3 py-2 text-xs" onclick="cp('${cardNumber.replace(/\D/g, "")}',this)">${t("cp")}</button></div></div>
 <ol class="text-sm mu space-y-1 mb-4 list-decimal pl-5"><li>${t("s1")}</li><li>${t("s2").replace("{a}", fm(amt))}</li><li>${t("s3")}</li><li>${t("s4")}</li></ol>
-<button class="btn gold w-full rounded-xl py-3" onclick="paid()">${t("paid")}</button><button class="btn w-full rounded-xl py-2 mt-1 mu text-sm" onclick="cl()">${t("cancel")}</button>`);
+<div id="topup-live-status" class="p-3 rounded-xl text-center text-sm font-bold mb-3" style="background:rgba(245,196,81,.10);color:var(--gd)">${t("chkg")}</div>
+<button class="btn w-full rounded-xl py-3 mu" onclick="cl()">${t("close")}</button>`);
   tick();
+  watchTopUp();
+}
+async function watchTopUp() {
+  clearInterval(topUpPollTimer);
+  const check = async () => {
+    if (!currentTopUp?.id || !$("#ov").classList.contains("on")) return;
+    try {
+      const result = await window.__FLEX_API__.getTopUp(currentTopUp.id);
+      currentTopUp = result.topUp;
+      if (currentTopUp.status === "completed") {
+        clearInterval(topUpPollTimer);
+        clearInterval(tmr);
+        await loadCurrentProfile();
+        cl();
+        status("ok", t("ok"), "+ " + fm(currentTopUp.amountUzs) + " · " + t("cur") + ": " + fm(bal));
+      } else if (["expired", "rejected"].includes(currentTopUp.status)) {
+        clearInterval(topUpPollTimer);
+        clearInterval(tmr);
+        const liveStatus = $("#topup-live-status");
+        if (liveStatus) {
+          liveStatus.textContent = t("exp");
+          liveStatus.style.color = "var(--er)";
+        }
+      }
+    } catch (_) {}
+  };
+  await check();
+  if (!currentTopUp?.id || !$("#ov").classList.contains("on") || ["completed", "expired", "rejected"].includes(currentTopUp.status)) return;
+  topUpPollTimer = setInterval(check, 2000);
 }
 function tick() {
   let s = Math.max(0, Math.ceil((new Date(currentTopUp?.expiresAt).getTime() - Date.now()) / 1000)) || 420;
@@ -619,10 +652,12 @@ function tick() {
       String(s % 60).padStart(2, "0");
     $("#tc").style.strokeDashoffset = 339.3 * (1 - s / total);
     if (s <= 0) {
-      cl();
-      H.unshift({ t: "{topH}", a: amt, s: "c", d: now() });
-      upd();
-      status("err", t("exp"));
+      clearInterval(tmr);
+      const liveStatus = $("#topup-live-status");
+      if (liveStatus) {
+        liveStatus.textContent = t("exp");
+        liveStatus.style.color = "var(--er)";
+      }
     }
   }, 1000);
 }
@@ -657,16 +692,6 @@ function status(k, title, sub) {
   if (k !== "wait")
     stT = setTimeout(() => $("#st").classList.add("hidden"), 5455);
 }
-function paid() {
-  const it = { t: "{topH}", a: amt, s: "p", d: now() },
-    a = amt;
-  H.unshift(it);
-  cl();
-  upd();
-  status("wait", t("chkg"), fm(a));
-  setTimeout(() => loadCurrentProfile(), 4000);
-}
-
 /* history / wallet */
 const row = (x) =>
   `<div class="glass p-3 flex items-center gap-3"><span class="dot" style="background:${ST[x.s]};box-shadow:0 0 8px ${ST[x.s]}"></span><div class="flex-1"><div class="font-bold text-sm">${tn(x.t)}</div><div class="mu text-xs">${x.d} · ${t("f_" + x.s)}</div></div><div class="font-bold text-sm" style="color:${x.a > 0 ? "var(--ok)" : "var(--tx)"}">${x.a > 0 ? "+" : "−"}${fm(x.a)}</div></div>`;

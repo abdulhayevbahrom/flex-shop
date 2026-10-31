@@ -3,6 +3,7 @@ const API_URL = import.meta.env.VITE_API_URL ?? "";
 async function request(path, options = {}) {
   const telegramInitData = window.Telegram?.WebApp?.initData;
   const response = await fetch(`${API_URL}${path}`, {
+    cache: "no-store",
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -46,4 +47,5 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ amount }),
     }),
+  getTopUp: (topUpId) => request(`/api/top-ups/${encodeURIComponent(topUpId)}`),
 };
