@@ -496,20 +496,20 @@
         min-height: calc(var(--H) - var(--sat) - var(--sab) - 106px);
       }
       #pubg #ug {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
         margin: 14px 0;
       }
       .pc {
         min-height: 0;
-        border-radius: 18px;
+        border-radius: 16px;
         border: 1px solid rgba(59, 130, 246, 0.45);
         background: linear-gradient(#0b1428, #060a14);
         box-shadow: 0 0 14px rgba(59, 130, 246, 0.15);
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        text-align: left;
+        text-align: center;
         transition:
           transform 0.15s,
           box-shadow 0.2s;
@@ -517,7 +517,7 @@
       .pc .pi {
         flex: none;
         width: 100%;
-        aspect-ratio: 1.5/1;
+        aspect-ratio: 1.4/1;
         overflow: hidden;
       }
       .pc .pi img,
@@ -531,15 +531,14 @@
         font-weight: 800;
         font-size: 15px;
         color: #ffc83d;
-        margin-top: 10px;
-        padding: 0 12px;
+        margin-top: 8px;
         line-height: 1.15;
       }
       .pc .p2 {
         font-weight: 700;
         font-size: 10.5px;
         color: #e8ecf1;
-        padding: 5px 12px 13px;
+        padding: 3px 4px 11px;
         line-height: 1.25;
       }
       @keyframes lf {
