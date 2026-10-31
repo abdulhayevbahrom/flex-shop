@@ -710,6 +710,26 @@
         object-fit: contain;
         display: block;
       }
+      .checkout-package-art {
+        width: 70px;
+        height: 50px;
+        flex: 0 0 70px;
+        overflow: hidden !important;
+        contain: paint;
+        isolation: isolate;
+        border: 1px solid rgba(59, 130, 246, 0.55);
+        border-radius: 12px;
+        clip-path: inset(0 round 12px);
+        -webkit-clip-path: inset(0 round 12px);
+        background: #07101f;
+      }
+      .checkout-package-art img,
+      .checkout-package-art svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
       #wal .wallet-title {
         margin-bottom: 20px;
         line-height: 1.2;

@@ -115,6 +115,8 @@ const D = {
   unf: ["Topilmadi", "Не найден"],
   uchk: ["Avval username’ni tekshiring", "Сначала проверьте username"],
   uerr: ["Tekshirib bo‘lmadi. Qayta urinib ko‘ring", "Не удалось проверить. Попробуйте снова"],
+  pnf: ["Player ID topilmadi", "Player ID не найден"],
+  perr: ["Player ID ni tekshirib bo‘lmadi. Qayta urinib ko‘ring", "Не удалось проверить Player ID. Попробуйте снова"],
 };
 let L = 0;
 const t = (k) => D[k][L];
@@ -145,6 +147,7 @@ let warn = "",
   tmr,
   cur = "home";
 let verifiedTelegramUsername = "";
+let verifiedPlayerName = "";
 let isAdmin = false;
 
 function esc(value) {
@@ -428,9 +431,9 @@ function chkRender() {
   if (sel === null) return;
   const [u, p] = UC[sel];
   $("#cs").innerHTML =
-    `<div class="shrink-0 overflow-hidden" style="width:70px;height:50px;border-radius:12px;border:1px solid rgba(59,130,246,.55)">${ucArt(sel, "w-full h-full object-cover")}</div><div class="flex-1"><div class="font-bold">UC / PUBG MOBILE</div><div class="mu text-sm">${u} UC</div></div><div class="font-bold" style="color:var(--gd)">${fm(p)}</div>`;
+    `<div class="checkout-package-art">${ucArt(ucImageIndex(u), "w-full h-full object-cover")}</div><div class="flex-1"><div class="font-bold">UC / PUBG MOBILE</div><div class="mu text-sm">${u} UC</div></div><div class="font-bold" style="color:var(--gd)">${fm(p)}</div>`;
   $("#vr").innerHTML = vok
-    ? `<div class="mt-3 p-3 rounded-xl font-bold" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.5);color:var(--ok);box-shadow:0 0 14px rgba(34,197,94,.25)">${t("usr")}: @zxc_flex ✅</div>`
+    ? `<div class="mt-3 p-3 rounded-xl font-bold" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.5);color:var(--ok);box-shadow:0 0 14px rgba(34,197,94,.25)">${t("usr")}: ${esc(verifiedPlayerName || vidv)} ✅</div>`
     : warn
       ? `<div class="mt-3 p-3 rounded-xl text-sm font-bold" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.6);color:var(--er)">${t(warn)}</div>`
       : "";
@@ -444,7 +447,7 @@ function shake() {
   e.classList.add("shk");
   e.focus();
 }
-function ver() {
+async function ver() {
   const v = $("#cid").value.trim(),
     b = $("#vb");
   if (!v) {
@@ -460,14 +463,25 @@ function ver() {
     shake();
     return toast(t("pid6"));
   }
+  b.disabled = true;
   b.textContent = "...";
-  setTimeout(() => {
-    b.textContent = t("tek");
+  vok = false;
+  verifiedPlayerName = "";
+  try {
+    const result = await window.__FLEX_API__.verifyPlayer(v);
     vok = true;
     vidv = v;
+    verifiedPlayerName = result.player?.name || v;
     warn = "";
     chkRender();
-  }, 900);
+  } catch (error) {
+    vidv = "";
+    warn = error?.code === "PLAYER_NOT_FOUND" ? "pnf" : "perr";
+    chkRender();
+  } finally {
+    b.disabled = false;
+    b.textContent = t("tek");
+  }
 }
 function pay() {
   const v = $("#cid").value.trim();
@@ -748,6 +762,7 @@ $("#pbn").src = BANNER_DATA;
 $("#cid").addEventListener("input", () => {
   if (vok || warn) {
     vok = false;
+    verifiedPlayerName = "";
     warn = "";
     chkRender();
   }
