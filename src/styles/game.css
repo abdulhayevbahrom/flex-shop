@@ -511,6 +511,9 @@
         box-shadow: 0 0 14px rgba(59, 130, 246, 0.15);
         overflow: hidden !important;
         isolation: isolate;
+        contain: paint;
+        clip-path: inset(0 round 16px);
+        -webkit-clip-path: inset(0 round 16px);
         display: flex;
         flex-direction: column;
         align-items: stretch;
@@ -527,6 +530,9 @@
         display: grid;
         place-items: center;
         padding: 0;
+        border-radius: 15px 15px 0 0;
+        clip-path: inset(0 round 15px 15px 0 0);
+        -webkit-clip-path: inset(0 round 15px 15px 0 0);
         border-bottom: 1px solid rgba(59, 130, 246, 0.22);
         background: #07101f;
       }
