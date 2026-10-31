@@ -130,8 +130,6 @@ const now = () =>
     hour: "2-digit",
     minute: "2-digit",
   });
-const CARDS = [{ l: "UZCARD / HUMO", n: "8600 1234 5678 9012" }];
-const HOLDER = "FLEX_OWNER";
 let UC = [];
 let PR = [];
 const ST = { p: "#F5C451", d: "#22c55e", c: "#ef4444" };
@@ -143,7 +141,7 @@ let warn = "",
   H = [],
   hf = "all",
   amt = 0,
-  meth = 0,
+  currentTopUp = null,
   tmr,
   cur = "home";
 let verifiedTelegramUsername = "";
@@ -572,35 +570,44 @@ function lack(m) {
 }
 
 function topSheet(pre) {
-  meth = 0;
+  currentTopUp = null;
   sheet(`<h3 class="text-xl font-bold mb-3">${t("tt")}</h3>
 <input id="am" class="inp mb-3" inputmode="numeric" placeholder="${t("amp")}" value="${pre || ""}">
 <div class="flex gap-2 mb-4 flex-wrap">${[20000, 50000, 100000].map((n) => `<button class="btn chip" onclick="$('#am').value=${n}">${fm(n)}</button>`).join("")}</div>
-<div class="mu text-sm mb-2">${t("met")}</div>
-<div class="grid grid-cols-1 gap-2 mb-4" id="mt">${CARDS.map((c, i) => `<button class="btn chip justify-center ${i ? "" : "a"}" onclick="pm(${i})">${c.l}</button>`).join("")}</div>
-<button class="btn gold w-full rounded-xl py-3" onclick="inv()">${t("go")}</button>`);
-}
-function pm(i) {
-  meth = i;
-  $$("#mt .chip").forEach((b, j) => b.classList.toggle("a", i === j));
+<button id="topup-submit" class="btn gold w-full rounded-xl py-3" onclick="inv()">${t("go")}</button>`);
 }
 
-function inv() {
+async function inv() {
   amt = parseInt($("#am").value.replace(/\D/g, "")) || 0;
   if (amt < 10000) return toast(t("min"));
-  const c = CARDS[meth];
+  const button = $("#topup-submit");
+  button.disabled = true;
+  button.textContent = "...";
+  try {
+    const result = await window.__FLEX_API__.createTopUp(amt);
+    currentTopUp = result.topUp;
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = t("go");
+    return toast(error?.message || t("uerr"));
+  }
+  const c = currentTopUp.card;
+  amt = Number(currentTopUp.amountUzs);
+  const cardNumber = String(c.number || "");
+  const formattedCardNumber = cardNumber.replace(/\D/g, "").replace(/(.{4})(?=.)/g, "$1 ");
   sheet(`<div class="flex flex-col items-center mb-4"><div class="text-sm font-bold mb-2" style="color:var(--gd)">${t("tl")}</div><div class="relative w-32 h-32"><svg viewBox="0 0 120 120" class="-rotate-90"><circle cx="60" cy="60" r="54" fill="none" stroke="rgba(128,128,128,.2)" stroke-width="7"/><circle id="tc" cx="60" cy="60" r="54" fill="none" stroke="#F5C451" stroke-width="7" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="0" style="filter:drop-shadow(0 0 6px #F5C451);transition:stroke-dashoffset 1s linear"/></svg><div id="tt" class="absolute inset-0 flex items-center justify-center text-2xl font-bold">07:00</div></div>
 <div class="mu text-sm mt-1">${t("sum")}</div><div class="font-bold text-xl" style="color:var(--gd)">${fm(amt)}</div></div>
 <div class="p-3 rounded-xl text-sm font-bold mb-3" style="background:rgba(245,166,35,.12);border:1px solid rgba(245,196,81,.55);color:var(--gd)">${t("warn").replace("{a}", fm(amt))}</div>
-<div class="vc p-5 mb-3"><div class="flex justify-between items-center mb-5"><div class="w-10 h-7 rounded" style="background:linear-gradient(135deg,#FFE08A,#b8860b)"></div><div class="text-xs" style="color:#8A94A3">${c.l}</div></div>
-<div class="text-xl font-bold tracking-widest mb-3">${c.n}</div>
-<div class="flex justify-between items-center"><div><div class="text-[10px]" style="color:#8A94A3">${t("hold")}</div><div class="text-sm font-bold">${HOLDER}</div></div><button class="btn gold rounded-lg px-3 py-2 text-xs" onclick="cp('${c.n.replace(/\s/g, "")}',this)">${t("cp")}</button></div></div>
+<div class="vc p-5 mb-3"><div class="flex justify-between items-center mb-5"><div class="w-10 h-7 rounded" style="background:linear-gradient(135deg,#FFE08A,#b8860b)"></div><div class="text-xs" style="color:#8A94A3">${esc(c.label || "UZCARD / HUMO")}</div></div>
+<div class="text-xl font-bold tracking-widest mb-3">${esc(formattedCardNumber)}</div>
+<div class="flex justify-between items-center"><div><div class="text-[10px]" style="color:#8A94A3">${t("hold")}</div><div class="text-sm font-bold">${esc(c.holder || "")}</div></div><button class="btn gold rounded-lg px-3 py-2 text-xs" onclick="cp('${cardNumber.replace(/\D/g, "")}',this)">${t("cp")}</button></div></div>
 <ol class="text-sm mu space-y-1 mb-4 list-decimal pl-5"><li>${t("s1")}</li><li>${t("s2").replace("{a}", fm(amt))}</li><li>${t("s3")}</li><li>${t("s4")}</li></ol>
 <button class="btn gold w-full rounded-xl py-3" onclick="paid()">${t("paid")}</button><button class="btn w-full rounded-xl py-2 mt-1 mu text-sm" onclick="cl()">${t("cancel")}</button>`);
   tick();
 }
 function tick() {
-  let s = 420;
+  let s = Math.max(0, Math.ceil((new Date(currentTopUp?.expiresAt).getTime() - Date.now()) / 1000)) || 420;
+  const total = s;
   clearInterval(tmr);
   tmr = setInterval(() => {
     s--;
@@ -610,7 +617,7 @@ function tick() {
       String((s / 60) | 0).padStart(2, "0") +
       ":" +
       String(s % 60).padStart(2, "0");
-    $("#tc").style.strokeDashoffset = 339.3 * (1 - s / 420);
+    $("#tc").style.strokeDashoffset = 339.3 * (1 - s / total);
     if (s <= 0) {
       cl();
       H.unshift({ t: "{topH}", a: amt, s: "c", d: now() });
@@ -657,12 +664,7 @@ function paid() {
   cl();
   upd();
   status("wait", t("chkg"), fm(a));
-  setTimeout(() => {
-    it.s = "d";
-    bal += a;
-    upd();
-    status("ok", t("ok"), "+ " + fm(a) + " · " + t("cur") + ": " + fm(bal));
-  }, 4000);
+  setTimeout(() => loadCurrentProfile(), 4000);
 }
 
 /* history / wallet */
