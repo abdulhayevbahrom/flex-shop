@@ -5,4 +5,6 @@ const module = window.location.pathname.startsWith("/admin")
   : await import("./App");
 const RootApp = module.default;
 
+
+
 createRoot(document.getElementById("root")).render(<RootApp />);
