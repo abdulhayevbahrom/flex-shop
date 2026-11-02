@@ -219,9 +219,13 @@ tgColors(false);
 const UN = U.username ? "@" + U.username : U.first_name;
 function avatars() {
   ["#av", "#av2"].forEach((s) => {
-    $(s).innerHTML = U.photo_url
-      ? `<img src="${U.photo_url}" class="w-full h-full object-cover" alt="">`
+    const avatar = $(s);
+    avatar.innerHTML = U.photo_url
+      ? `<img src="${esc(U.photo_url)}" class="w-full h-full object-cover" alt="">`
       : USERICON;
+    avatar.querySelector("img")?.addEventListener("error", () => {
+      avatar.innerHTML = USERICON;
+    }, { once: true });
   });
   $("#un0").textContent = $("#un1").textContent = UN;
   $("#id1").textContent = "ID " + U.id;
@@ -261,6 +265,10 @@ async function loadCurrentProfile() {
     const result = await window.__FLEX_API__.getProfile();
     bal = Number(result.user?.balanceUzs ?? 0);
     isAdmin = result.user?.isAdmin === true;
+    if (result.user?.photoUrl && result.user.photoUrl !== U.photo_url) {
+      U.photo_url = result.user.photoUrl;
+      avatars();
+    }
     upd();
     drawTabs({ pubg: "home", prem: "home", chk: "home" }[cur] || cur);
   } catch (_) {}
