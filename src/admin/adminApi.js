@@ -2,10 +2,16 @@ const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 async function request(path, options = {}) {
   const token = sessionStorage.getItem("admin_token");
+  const telegramInitData = window.Telegram?.WebApp?.initData;
   const response = await fetch(`${API_URL}/api/admin${path}`, {
     ...options,
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(telegramInitData ? { "X-Telegram-Init-Data": telegramInitData } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {

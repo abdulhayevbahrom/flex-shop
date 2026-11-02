@@ -69,6 +69,7 @@ const D = {
   cur: ["Joriy balans", "Текущий баланс"],
   led: ["To'lovlar daftari", "Журнал платежей"],
   noop: ["Operatsiyalar yo'q", "Операций нет"],
+  nop: ["Hozircha paketlar mavjud emas", "Пакеты пока недоступны"],
   lang: ["Ilova tili", "Язык приложения"],
   sup: ["Qo'llab-quvvatlash", "Поддержка"],
   cc: ["Valyuta", "Валюта"],
@@ -252,13 +253,8 @@ function drawTabs(a) {
   ).join("");
 }
 async function openAdmin() {
-  try {
-    const result = await window.__FLEX_API__.loginAdminWithTelegram();
-    sessionStorage.setItem("admin_token", result.token);
-    window.location.assign("/admin");
-  } catch (_) {
-    toast("Admin panelga kirib bo‘lmadi");
-  }
+  sessionStorage.removeItem("admin_token");
+  window.location.assign("/admin?login=1");
 }
 async function loadCurrentProfile() {
   try {
@@ -294,9 +290,6 @@ async function loadProducts() {
     UC = [];
     PR = [];
   }
-  $("#pubg-card").classList.toggle("hidden", UC.length === 0);
-  $("#premium-card").classList.toggle("hidden", PR.length === 0);
-  if ((cur === "pubg" && UC.length === 0) || (cur === "prem" && PR.length === 0)) nav("home");
   sel = null;
   products();
   selRender();
@@ -404,14 +397,18 @@ function ucImageIndex(amount) {
     Math.abs(value - amount) < Math.abs(UC_IMAGE_AMOUNTS[best] - amount) ? index : best, 0);
 }
 function products() {
-  $("#ug").innerHTML = UC.map(
-    ([u, p], i) =>
-      `<button class="btn pc ${sel === i ? "sel" : ""}" onclick="pick(${i})"><div class="pi">${ucArt(ucImageIndex(u), "uc-package-image")}</div><div class="p1">${u} UC</div><div class="p2">${fm(p)}</div></button>`,
-  ).join("");
-  $("#pg").innerHTML = PR.map(
-    ([m, p]) =>
-      `<button class="btn glass w-full rounded-2xl p-5 flex items-center justify-between text-left" style="box-shadow:inset 0 0 0 1px rgba(167,139,250,.4),0 0 18px rgba(139,92,246,.25)" onclick="buyP(${m},${p})"><div class="flex items-center gap-3">${star}<div><div class="text-2xl font-bold" style="color:#DDD6FE">${m} ${t("mo")}</div><div class="text-sm" style="color:#A78BFA">Telegram Premium</div></div></div><div class="font-bold">${fm(p)}</div></button>`,
-  ).join("");
+  $("#ug").innerHTML = UC.length
+    ? UC.map(
+      ([u, p], i) =>
+        `<button class="btn pc ${sel === i ? "sel" : ""}" onclick="pick(${i})"><div class="pi">${ucArt(ucImageIndex(u), "uc-package-image")}</div><div class="p1">${u} UC</div><div class="p2">${fm(p)}</div></button>`,
+    ).join("")
+    : `<div class="glass mu text-sm text-center py-8 px-4 col-span-3">${t("nop")}</div>`;
+  $("#pg").innerHTML = PR.length
+    ? PR.map(
+      ([m, p]) =>
+        `<button class="btn glass w-full rounded-2xl p-5 flex items-center justify-between text-left" style="box-shadow:inset 0 0 0 1px rgba(167,139,250,.4),0 0 18px rgba(139,92,246,.25)" onclick="buyP(${m},${p})"><div class="flex items-center gap-3">${star}<div><div class="text-2xl font-bold" style="color:#DDD6FE">${m} ${t("mo")}</div><div class="text-sm" style="color:#A78BFA">Telegram Premium</div></div></div><div class="font-bold">${fm(p)}</div></button>`,
+    ).join("")
+    : `<div class="glass mu text-sm text-center py-8 px-4">${t("nop")}</div>`;
 }
 /* floating stars */
 $("#sky").innerHTML += Array.from(
@@ -427,6 +424,8 @@ function pick(i) {
 }
 function selRender() {
   const b = $("#selbar");
+  b.classList.toggle("hidden", UC.length === 0);
+  if (!UC.length) return;
   b.style.animation = "none";
   b.offsetHeight;
   b.style.animation = "";

@@ -141,7 +141,30 @@ function Dashboard({ admin, onLogout }) {
 
 export default function AdminApp() {
   const [admin, setAdmin] = useState(null); const [loading, setLoading] = useState(true);
-  useEffect(() => { document.documentElement.classList.add("admin-document"); adminApi.me().then((r) => setAdmin(r.admin)).catch(() => {}).finally(() => setLoading(false)); return () => document.documentElement.classList.remove("admin-document"); }, []);
+  useEffect(() => {
+    let active = true;
+    document.documentElement.classList.add("admin-document");
+    const forceLogin = new URLSearchParams(window.location.search).get("login") === "1";
+    async function authenticate() {
+      if (forceLogin) {
+        if (active) setLoading(false);
+        return;
+      }
+      try {
+        const result = await adminApi.me();
+        if (active) setAdmin(result.admin);
+      } catch {
+        // Sessiya bo‘lmasa, odatiy login formasi ko‘rsatiladi.
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    authenticate();
+    return () => {
+      active = false;
+      document.documentElement.classList.remove("admin-document");
+    };
+  }, []);
   if (loading) return <main className="admin-loading"><span className="brand-mark">FS</span><Icon name="loader"/></main>;
   if (!admin) return <Login onLogin={setAdmin}/>;
   return <Dashboard admin={admin} onLogout={async () => { await adminApi.logout(); setAdmin(null); }}/>;

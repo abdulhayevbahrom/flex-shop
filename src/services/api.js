@@ -25,7 +25,6 @@ async function request(path, options = {}) {
 export const api = {
   getBotStatus: () => request("/api/bot/status"),
   getProfile: () => request("/api/profile"),
-  loginAdminWithTelegram: () => request("/api/admin/auth/telegram", { method: "POST" }),
   getProducts: () => request("/api/products"),
   verifyPlayer: (playerId) =>
     request("/api/players/verify", {
