@@ -15,7 +15,7 @@ const menu = [
 ];
 
 function Login({ onLogin }) {
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,11 +25,11 @@ function Login({ onLogin }) {
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
-  return <main className="admin-login"><form className="login-card" onSubmit={submit}>
+  return <main className="admin-login"><form className="login-card" onSubmit={submit} autoComplete="off">
     <div className="login-brand"><span className="brand-mark">FS</span><span>Flex Shop <small>Boshqaruv markazi</small></span></div>
     <div className="login-intro"><span className="eyebrow">XUSH KELIBSIZ</span><h1>Admin panelga kirish</h1><p>Do‘koningizni bir joydan boshqaring.</p></div>
     {error && <ErrorBox text={error} close={() => setError("")}/>}
-    <label className="form-field">Login<input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required /></label>
+    <label className="form-field">Login<input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" required /></label>
     <label className="form-field">Parol<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required /></label>
     <button className="save login-submit" disabled={busy}>{busy ? <Icon name="loader"/> : <Icon name="shield"/>}{busy ? "Kirilmoqda…" : "Panelga kirish"}<Icon name="arrow-right" size={16}/></button>
     <p className="login-note"><Icon name="shield" size={13}/> Faqat administratorlar uchun</p>
