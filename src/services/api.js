@@ -41,6 +41,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  getOrders: () => request("/api/orders?limit=100"),
+  getOrder: (orderId) => request(`/api/orders/${encodeURIComponent(orderId)}`),
   createTopUp: (amount) =>
     request("/api/top-ups", {
       method: "POST",

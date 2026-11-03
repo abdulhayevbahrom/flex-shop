@@ -145,6 +145,7 @@ let warn = "",
   bal = 0,
   H = [],
   serverTopUps = [],
+  serverOrders = [],
   hf = "all",
   amt = 0,
   currentTopUp = null,
@@ -280,6 +281,13 @@ async function loadTopUps() {
     upd();
   } catch (_) {}
 }
+async function loadOrders() {
+  try {
+    const result = await window.__FLEX_API__.getOrders();
+    serverOrders = result.items ?? [];
+    upd();
+  } catch (_) {}
+}
 function ucAmountFromName(name) {
   const value = String(name ?? "").replaceAll(",", "");
   const expression = value.match(/([\d\s+]+)\s*UC\b/i)?.[1] ?? value;
@@ -294,7 +302,7 @@ async function loadProducts() {
       return [amount, Number(item.priceUzs), String(item.id), item.name];
     }).filter(([amount, price]) => amount > 0 && Number.isFinite(price));
     PR = (catalog.telegramPremium ?? []).map((item) => [Number(item.months), Number(item.priceUzs)])
-      .filter(([months, price]) => months > 0 && Number.isFinite(price));
+      .filter(([months, price]) => [3, 6, 12].includes(months) && Number.isFinite(price));
   } catch (_) {
     UC = [];
     PR = [];
@@ -412,12 +420,14 @@ function products() {
         `<button class="btn pc ${sel === i ? "sel" : ""}" onclick="pick(${i})"><div class="pi">${ucArt(ucImageIndex(u), "uc-package-image")}</div><div class="p1">${u} UC</div><div class="p2">${fm(p)}</div></button>`,
     ).join("")
     : `<div class="glass mu text-sm text-center py-8 px-4 col-span-3">${t("nop")}</div>`;
-  $("#pg").innerHTML = PR.length
+  const oneMonth = `<a class="btn glass w-full rounded-2xl p-5 flex items-center justify-between text-left" style="box-shadow:inset 0 0 0 1px rgba(245,196,81,.45),0 0 18px rgba(245,196,81,.18)" href="https://t.me/bgpencil?text=${encodeURIComponent("Assalomu alaykum, 48 000 UZS narxdagi 1 oylik Telegram Premium sotib olmoqchiman")}" target="_blank" rel="noopener"><div class="flex items-center gap-3">${star}<div><div class="text-2xl font-bold" style="color:#F5C451">1 ${t("mo")}</div><div class="text-sm" style="color:#A78BFA">Telegram Premium · ${L ? "через администратора" : "admin orqali"}</div></div></div><div class="font-bold">${fm(48000)}</div></a>`;
+  const apiPlans = PR.length
     ? PR.map(
       ([m, p]) =>
-        `<button class="btn glass w-full rounded-2xl p-5 flex items-center justify-between text-left" style="box-shadow:inset 0 0 0 1px rgba(167,139,250,.4),0 0 18px rgba(139,92,246,.25)" onclick="buyP(${m},${p})"><div class="flex items-center gap-3">${star}<div><div class="text-2xl font-bold" style="color:#DDD6FE">${m} ${t("mo")}</div><div class="text-sm" style="color:#A78BFA">Telegram Premium</div></div></div><div class="font-bold">${fm(p)}</div></button>`,
+        `<button class="btn glass w-full rounded-2xl p-5 flex items-center justify-between text-left" style="box-shadow:inset 0 0 0 1px rgba(167,139,250,.4),0 0 18px rgba(139,92,246,.25)" onclick="openPremiumRecipient(${m},${p})"><div class="flex items-center gap-3">${star}<div><div class="text-2xl font-bold" style="color:#DDD6FE">${m} ${t("mo")}</div><div class="text-sm" style="color:#A78BFA">Telegram Premium</div></div></div><div class="font-bold">${fm(p)}</div></button>`,
     ).join("")
     : `<div class="glass mu text-sm text-center py-8 px-4">${t("nop")}</div>`;
+  $("#pg").innerHTML = oneMonth + apiPlans;
 }
 /* floating stars */
 $("#sky").innerHTML += Array.from(
@@ -531,6 +541,35 @@ function pay() {
     playerId: v,
   });
 }
+let selectedPremium = null;
+function openPremiumRecipient(months, price) {
+  selectedPremium = { months, price };
+  sheet(`<h3 class="text-xl font-bold mb-2">Telegram Premium · ${months} ${t("mo")}</h3><p class="mu text-sm mb-4">${L ? "Введите username получателя или выберите себя" : "Qabul qiluvchi username’ni kiriting yoki o‘zingizni tanlang"}</p><input id="premium-recipient" class="inp mb-3" placeholder="@username"><div class="grid grid-cols-2 gap-2"><button id="premium-check" class="btn vio rounded-xl py-3" onclick="verifyPremiumRecipient(false)">${t("chk")}</button><button class="btn gold rounded-xl py-3" onclick="verifyPremiumRecipient(true)">${L ? "Для себя" : "O‘zimga"}</button></div><div id="premium-recipient-status" class="mt-3"></div><button class="btn w-full rounded-xl py-3 mt-3 mu" onclick="cl()">${t("cancel")}</button>`);
+}
+async function verifyPremiumRecipient(useSelf) {
+  if (!selectedPremium) return;
+  const input = $("#premium-recipient");
+  const statusBox = $("#premium-recipient-status");
+  const username = useSelf ? (U.username ? `@${U.username}` : "") : input?.value.trim();
+  if (!username) return toast(useSelf ? (L ? "У вашего аккаунта нет username" : "Telegram akkauntingizda username yo‘q") : t("unv"));
+  if (!/^@[A-Za-z0-9_]{5,}$/.test(username)) return toast(t("unv"));
+  if (input) input.value = username;
+  if (statusBox) statusBox.innerHTML = `<div class="mu text-sm text-center">${t("chkg")}</div>`;
+  try {
+    const result = await window.__FLEX_API__.verifyTelegramUser(username);
+    const profile = result.profile;
+    const verified = profile.username || username;
+    const { months, price } = selectedPremium;
+    verifiedTelegramUsername = String(verified).toLowerCase();
+    buy(`Premium ${months} {mo}`, price, [["unl", verified]], {
+      type: "telegram_premium",
+      months,
+      telegramUsername: verified,
+    });
+  } catch (error) {
+    if (statusBox) statusBox.innerHTML = `<div class="p-3 rounded-xl text-sm font-bold" style="background:rgba(239,68,68,.12);color:var(--er)">${esc(error?.code === "TELEGRAM_USER_NOT_FOUND" ? t("unf") : error?.message || t("uerr"))}</div>`;
+  }
+}
 async function vu() {
   const v = $("#un").value.trim();
   if (!/^@[A-Za-z0-9_]{5,}$/.test(v)) return toast(t("unv"));
@@ -538,7 +577,7 @@ async function vu() {
   verifiedTelegramUsername = "";
   button.disabled = true;
   button.textContent = "...";
-  $("#ur").innerHTML = "";
+  if ($("#ur")) $("#ur").innerHTML = "";
   try {
     const result = await window.__FLEX_API__.verifyTelegramUser(v);
     const profile = result.profile;
@@ -597,6 +636,7 @@ async function doBuy() {
     const result = await window.__FLEX_API__.createOrder(payload);
     await loadCurrentProfile();
     await loadTopUps();
+    await loadOrders();
     const order = result.order;
     sheet(
       `<div class="text-center"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 10px #22c55e);margin:0 auto"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.500l3 3 6-6.500"/></svg><h3 class="text-xl font-bold mt-3">${t("succ")}</h3><p class="mu mt-2">${tn(name)} — ${fm(price)}</p><p class="mu mt-2">${esc(order?.status || "processing")}</p></div><button class="btn gold w-full rounded-xl py-3 mt-4" onclick="cl();nav('home')">${t("close")}</button>`,
@@ -755,7 +795,35 @@ function status(k, title, sub) {
 }
 /* history / wallet */
 const row = (x) =>
-  `<div class="glass p-3 flex items-center gap-3"${x.topUpId && x.s === "p" ? ` role="button" onclick="reopenTopUp('${x.topUpId}')"` : ""}><span class="dot" style="background:${ST[x.s]};box-shadow:0 0 8px ${ST[x.s]}"></span><div class="flex-1"><div class="font-bold text-sm">${tn(x.t)}</div><div class="mu text-xs">${x.d} · ${t("f_" + x.s)}</div></div><div class="font-bold text-sm" style="color:${x.s === "p" ? "var(--gd)" : x.s === "c" ? "var(--er)" : x.a > 0 ? "var(--ok)" : "var(--tx)"}">${x.s === "p" || x.s === "c" ? "" : x.a > 0 ? "+" : "−"}${fm(x.a)}</div></div>`;
+  `<div class="glass p-3 flex items-center gap-3"${x.orderId ? ` role="button" onclick="openOrderDetails('${x.orderId}')"` : x.topUpId && x.s === "p" ? ` role="button" onclick="reopenTopUp('${x.topUpId}')"` : ""}><span class="dot" style="background:${ST[x.s]};box-shadow:0 0 8px ${ST[x.s]}"></span><div class="flex-1"><div class="font-bold text-sm">${tn(x.t)}</div><div class="mu text-xs">${x.d} · ${t("f_" + x.s)}</div></div><div class="font-bold text-sm" style="color:${x.s === "p" ? "var(--gd)" : x.s === "c" ? "var(--er)" : x.a > 0 ? "var(--ok)" : "var(--tx)"}">${x.s === "p" || x.s === "c" ? "" : x.a > 0 ? "+" : "−"}${fm(x.a)}</div></div>`;
+function orderStatusLabel(value) {
+  const labels = {
+    awaiting_payment: ["To'lov kutilmoqda", "Ожидает оплаты"], created: ["Yaratildi", "Создан"],
+    processing: ["Bajarilmoqda", "Выполняется"], partial: ["Qisman bajarildi", "Выполнен частично"],
+    manual_review: ["Tekshirilmoqda", "Проверяется"], completed: ["Bajarildi", "Выполнен"],
+    failed: ["Xato", "Ошибка"], refunded: ["Pul qaytarildi", "Возврат"], cancelled: ["Bekor qilindi", "Отменён"],
+  };
+  return labels[value]?.[L] || value || "—";
+}
+async function openOrderDetails(orderId) {
+  try {
+    const { order: o } = await window.__FLEX_API__.getOrder(orderId);
+    const recipient = o.type === "pubg_uc" ? (o.recipient?.playerName || o.recipient?.playerId) : o.recipient?.telegramUsername;
+    const buyer = U.username ? `@${U.username}` : (U.first_name || String(U.id));
+    const detailRow = (label, value, danger = false) => `<div class="flex gap-3 p-3" style="border-bottom:1px solid rgba(148,163,184,.16);${danger ? "background:rgba(239,68,68,.08);color:var(--er)" : ""}"><span class="mu text-sm" style="width:38%;flex-shrink:0">${esc(label)}</span><b class="text-sm" style="overflow-wrap:anywhere">${esc(value || "—")}</b></div>`;
+    const locale = L ? "ru-RU" : "uz-UZ";
+    const rows = [
+      detailRow("Order ID", o.id), detailRow(L ? "Статус" : "Holati", orderStatusLabel(o.status)),
+      detailRow(L ? "Кто купил" : "Kim sotib oldi", buyer), detailRow(L ? "Для кого" : "Kim uchun", recipient),
+      detailRow(L ? "Оплата" : "To'lov", fm(o.paymentAmountUzs ?? o.chargedUzs)),
+      detailRow("Player ID", o.recipient?.playerId), detailRow(L ? "Имя игрока" : "Player nomi", o.recipient?.playerName),
+      detailRow(L ? "Пакет" : "Paket", o.product?.title), detailRow(L ? "Когда" : "Qachon", new Date(o.createdAt).toLocaleString(locale)),
+      o.completedAt ? detailRow(L ? "Выполнено" : "Bajarilgan vaqt", new Date(o.completedAt).toLocaleString(locale)) : "",
+      o.failureReason ? detailRow(L ? "Причина" : "Nega bekor bo'ldi", o.failureReason, true) : "",
+    ].join("");
+    sheet(`<h3 class="text-xl font-bold mb-3">${L ? "Детали заказа" : "Order tafsilotlari"}</h3><div class="glass overflow-hidden mb-3">${rows}</div><button class="btn gold w-full rounded-xl py-3" onclick="cl()">${t("close")}</button>`);
+  } catch (error) { toast(error?.message || t("uerr")); }
+}
 const crate = () =>
   `<div class="text-center py-10"><svg width="150" height="150" viewBox="0 0 150 150"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE08A"/><stop offset="1" stop-color="#B8730B"/></linearGradient></defs><path d="M20 55Q75-5 130 55Z" fill="#8B5CF6" opacity=".85"/><path d="M20 55 65 100M130 55 85 100M75 40V100" stroke="#C4B5FD" stroke-width="1.5"/><path d="M50 100h50v36H50z" fill="url(#g1)"/><path d="M50 100l12-10h50l-12 10z" fill="#FFE08A"/><path d="M100 100l12-10v36l-12 10z" fill="#8a5508"/><path d="M50 112h50M75 100v36" stroke="#4a2c00" stroke-width="3"/></svg><div class="font-bold mt-2">${t("em")}</div><div class="mu text-sm">${t("em2")}</div></div>`;
 function upd() {
@@ -773,7 +841,14 @@ function upd() {
     d: new Date(item.createdAt).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
     topUpId: item.id,
   }));
-  const allHistory = [...topUpRows, ...H];
+  const orderRows = serverOrders.map((item) => ({
+    t: item.product?.title || (item.type === "pubg_uc" ? "PUBG Mobile" : "Telegram Premium"),
+    a: -Number(item.chargedUzs),
+    s: item.status === "completed" ? "d" : ["failed", "refunded", "cancelled"].includes(item.status) ? "c" : "p",
+    d: new Date(item.createdAt).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+    orderId: item.id,
+  }));
+  const allHistory = [...orderRows, ...topUpRows, ...H];
   const A = allHistory.filter((x) => hf === "all" || x.s === hf);
   $("#hl").innerHTML = A.length ? A.map(row).join("") : crate();
   const W = [...topUpRows, ...H];
@@ -789,7 +864,7 @@ function applyLang() {
   document.documentElement.lang = L ? "ru" : "uz";
   $("#lgu").classList.toggle("a", !L);
   $("#lgr").classList.toggle("a", !!L);
-  $("#ur").innerHTML = "";
+  if ($("#ur")) $("#ur").innerHTML = "";
   chkRender();
   drawTabs({ pubg: "home", prem: "home", chk: "home" }[cur] || cur);
   products();
@@ -863,13 +938,14 @@ $("#cid").addEventListener("input", () => {
     chkRender();
   }
 });
-$("#un").addEventListener("input", () => {
+$("#un")?.addEventListener("input", () => {
   verifiedTelegramUsername = "";
-  $("#ur").innerHTML = "";
+  if ($("#ur")) $("#ur").innerHTML = "";
 });
 avatars();
 setImg($("#hero"), [HERO_DATA, ...IMG.hero], heroArt());
 applyLang();
 loadCurrentProfile();
 loadTopUps();
+loadOrders();
 loadProducts();

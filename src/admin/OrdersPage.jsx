@@ -52,6 +52,11 @@ function DetailSection({ icon, title, children }) {
   return <section className="order-detail-section"><h3><Icon name={icon} size={16} />{title}</h3><div className="order-detail-grid">{children}</div></section>;
 }
 
+function OrderTableRow({ label, value, danger = false }) {
+  const shown = value !== undefined && value !== null && value !== "" ? value : "—";
+  return <div className={`order-table-row${danger ? " is-danger" : ""}`}><span>{label}</span><strong>{shown}</strong></div>;
+}
+
 function OrderModal({ id, onClose }) {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
@@ -71,47 +76,21 @@ function OrderModal({ id, onClose }) {
         <div><h3>{order.product?.title || productType(order.type)}</h3><p>{productType(order.type)}</p></div>
         <Status value={order.status} />
       </div>
-      <DetailSection icon="orders" title="Zakaz ma’lumotlari">
-        <Detail label="Zakaz ID" value={order.id} copy />
-        <Detail label="Mijoz narxi" value={money(order.chargedUzs)} />
-        <Detail label="API narxi" value={usd(order.costUsd)} />
-        {order.product?.quantity != null && <Detail label="Miqdor" value={order.product.quantity} />}
-        {order.product?.months != null && <Detail label="Obuna muddati" value={`${order.product.months} oy`} />}
-        {order.product?.offerId && <Detail label="Paket ID" value={order.product.offerId} copy />}
-      </DetailSection>
-      <DetailSection icon="user" title="Kim sotib oldi">
-        <Detail label="Ism va familiya" value={personName(order.user)} />
-        <Detail label="Telegram username" value={telegramName(order.user?.username)} copy />
-        <Detail label="Telegram ID" value={order.user?.telegramId} copy />
-        <Detail label="Mijoz ID" value={order.user?.id} copy />
-      </DetailSection>
-      <DetailSection icon="game" title="Kim uchun — qabul qiluvchi akkaunt">
-        {order.type === "pubg_uc" ? <><Detail label="Player ID" value={order.recipient?.playerId} copy /><Detail label="Player nomi" value={order.recipient?.playerName} /></> : <Detail label="Telegram username" value={telegramName(order.recipient?.telegramUsername)} copy />}
-      </DetailSection>
-      <DetailSection icon="package" title="Qaysi accountdan bajarildi">
-        <Detail label="Provider" value={order.provider === "lootbar" ? "Lootbar" : order.provider === "fragment" ? "Fragment API" : order.provider} />
-        <Detail label="Bajaruvchi account" value={order.providerAccount} copy />
-        <Detail label="Provider order ID" value={order.providerOrderId} copy />
-        <Detail label="Provider reference" value={order.providerReferenceId} copy />
-        <Detail label="Amal holati" value={statusLabels[order.status] || order.status} />
-        <Detail label="To‘lov usuli" value={order.providerPayload?.result?.payment_method || order.providerPayload?.payment_method || order.providerPayload?.response?.result?.payment_method} />
-      </DetailSection>
-      <DetailSection icon="wallet" title="To‘lov ma’lumotlari">
-        <Detail label="To‘lov summasi" value={order.paymentAmountUzs != null ? money(order.paymentAmountUzs) : "—"} />
-        <Detail label="To‘lov holati" value={paymentStatusLabels[order.topUp?.status] || order.topUp?.status} />
-        <Detail label="Karta nomi" value={order.topUp?.cardLabel} />
-        <Detail label="Karta raqami" value={order.topUp?.cardNumber?.replace(/(.{4})(?=.)/g, "$1 ")} copy />
-        <Detail label="Karta egasi" value={order.topUp?.cardHolder} />
-        <Detail label="To‘lov ID" value={order.topUp?._id || order.topUp?.id} copy />
-      </DetailSection>
-      <DetailSection icon="clock" title="Vaqtlar">
-        <Detail label="Yaratilgan" value={dateTime(order.createdAt)} />
-        <Detail label="To‘lov muddati" value={dateTime(order.paymentExpiresAt)} />
-        <Detail label="To‘langan" value={dateTime(order.paidAt)} />
-        <Detail label="Bajarilgan" value={dateTime(order.completedAt)} />
-        {order.refundedAt && <Detail label="Qaytarilgan" value={dateTime(order.refundedAt)} />}
-      </DetailSection>
-      {order.failureReason && <div className="order-failure"><Icon name="info" size={17} /><div><strong>{["cancelled", "refunded"].includes(order.status) ? "Bekor bo‘lish / qaytarish sababi" : "Xato sababi"}</strong><p>{order.failureReason}</p></div></div>}
+      <div className="order-info-table">
+        <OrderTableRow label="Order ID" value={order.id} />
+        <OrderTableRow label="Holati" value={statusLabels[order.status] || order.status} />
+        <OrderTableRow label="Kim sotib oldi" value={`${telegramName(order.user?.username)} · ${personName(order.user)}`} />
+        <OrderTableRow label="Kim uchun" value={order.type === "pubg_uc" ? order.recipient?.playerName || order.recipient?.playerId : telegramName(order.recipient?.telegramUsername)} />
+        <OrderTableRow label="To‘lov" value={`${money(order.paymentAmountUzs ?? order.chargedUzs)}${order.topUp?.status ? ` · ${paymentStatusLabels[order.topUp.status] || order.topUp.status}` : ""}`} />
+        <OrderTableRow label="Player ID" value={order.recipient?.playerId} />
+        <OrderTableRow label="Player nomi" value={order.recipient?.playerName} />
+        <OrderTableRow label="Paket" value={order.product?.title} />
+        <OrderTableRow label="Qachon" value={dateTime(order.createdAt)} />
+        {order.paidAt && <OrderTableRow label="To‘langan vaqt" value={dateTime(order.paidAt)} />}
+        {order.completedAt && <OrderTableRow label="Bajarilgan vaqt" value={dateTime(order.completedAt)} />}
+        {order.refundedAt && <OrderTableRow label="Qaytarilgan vaqt" value={dateTime(order.refundedAt)} />}
+        {order.failureReason && <OrderTableRow label={["cancelled", "refunded"].includes(order.status) ? "Nega bekor bo‘ldi" : "Xato sababi"} value={order.failureReason} danger />}
+      </div>
       <details className="order-provider-response"><summary><Icon name="package" size={15} />Provider javobi<Icon name="chevron-right" size={15} /></summary><pre>{JSON.stringify(order.providerPayload ?? {}, null, 2)}</pre></details>
     </>}
   </Modal>;
