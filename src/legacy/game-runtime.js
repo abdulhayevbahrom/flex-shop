@@ -521,7 +521,11 @@ function pay() {
     return toast(t("idv"));
   }
   if (sel === null) return;
-  buy("PUBG " + UC[sel][0] + " UC", UC[sel][1], [["pidl", v]]);
+  buy("PUBG " + UC[sel][0] + " UC", UC[sel][1], [["pidl", v]], {
+    type: "pubg_uc",
+    offerId: UC[sel][2],
+    playerId: v,
+  });
 }
 async function vu() {
   const v = $("#un").value.trim();
@@ -549,8 +553,8 @@ async function vu() {
 
 /* BALANCE LOGIC: user_balance >= product_price -> success, otherwise top-up flow */
 let PB = null;
-function buy(name, price, rows) {
-  PB = { name, price, rows: rows || [] };
+function buy(name, price, rows, payload) {
+  PB = { name, price, rows: rows || [], payload };
   if (bal >= price) return confirmBuy();
   lack(price - bal);
 }
@@ -566,24 +570,36 @@ function buyP(m, p) {
     $("#un").focus();
     return;
   }
-  buy("Premium " + m + " {mo}", p, [["unl", v]]);
+  buy("Premium " + m + " {mo}", p, [["unl", v]], {
+    type: "telegram_premium",
+    months: m,
+    telegramUsername: v,
+  });
 }
 function confirmBuy() {
   const { name, price, rows } = PB;
   sheet(
-    `<div class="text-center"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#F5C451" stroke-width="2" stroke-linecap="round" style="margin:0 auto"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01"/></svg><h3 class="text-xl font-bold mt-3">${t("cfT")}</h3></div><div class="glass p-3 mt-4 text-sm space-y-2"><div class="flex justify-between gap-3"><span class="mu">${t("cfX")}</span><b>${tn(name)}</b></div>${rows.map((r) => `<div class="flex justify-between gap-3"><span class="mu">${t(r[0])}</span><b>${r[1]}</b></div>`).join("")}<div class="flex justify-between gap-3"><span class="mu">${t("cfA")}</span><b style="color:var(--gd)">${fm(price)}</b></div><div class="flex justify-between gap-3"><span class="mu">${t("cfL")}</span><b>${fm(bal - price)}</b></div></div><button class="btn gold w-full rounded-xl py-3 mt-4" onclick="doBuy()">${t("yes")}</button><button class="btn w-full rounded-xl py-3 mt-2 mu" onclick="cl()">${t("cancel")}</button>`,
+    `<div class="text-center"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#F5C451" stroke-width="2" stroke-linecap="round" style="margin:0 auto"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01"/></svg><h3 class="text-xl font-bold mt-3">${t("cfT")}</h3></div><div class="glass p-3 mt-4 text-sm space-y-2"><div class="flex justify-between gap-3"><span class="mu">${t("cfX")}</span><b>${tn(name)}</b></div>${rows.map((r) => `<div class="flex justify-between gap-3"><span class="mu">${t(r[0])}</span><b>${r[1]}</b></div>`).join("")}<div class="flex justify-between gap-3"><span class="mu">${t("cfA")}</span><b style="color:var(--gd)">${fm(price)}</b></div><div class="flex justify-between gap-3"><span class="mu">${t("cfL")}</span><b>${fm(bal - price)}</b></div></div><button id="buy-confirm" class="btn gold w-full rounded-xl py-3 mt-4" onclick="doBuy()">${t("yes")}</button><button class="btn w-full rounded-xl py-3 mt-2 mu" onclick="cl()">${t("cancel")}</button>`,
   );
 }
-function doBuy() {
-  const { name, price } = PB;
+async function doBuy() {
+  const { name, price, payload } = PB;
   if (bal < price) return lack(price - bal);
-  {
-    bal -= price;
-    H.unshift({ t: name, a: -price, s: "d", d: now() });
-    upd();
+  const button = $("#buy-confirm");
+  if (!payload || !button || button.disabled) return;
+  button.disabled = true;
+  button.textContent = "...";
+  try {
+    const result = await window.__FLEX_API__.createOrder(payload);
+    await loadCurrentProfile();
+    await loadTopUps();
+    const order = result.order;
     sheet(
-      `<div class="text-center"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 10px #22c55e);margin:0 auto"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.500l3 3 6-6.500"/></svg><h3 class="text-xl font-bold mt-3">${t("succ")}</h3><p class="mu mt-2">${tn(name)} — ${fm(price)}</p></div><button class="btn gold w-full rounded-xl py-3 mt-4" onclick="cl();nav('home')">${t("close")}</button>`,
+      `<div class="text-center"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 10px #22c55e);margin:0 auto"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.500l3 3 6-6.500"/></svg><h3 class="text-xl font-bold mt-3">${t("succ")}</h3><p class="mu mt-2">${tn(name)} — ${fm(price)}</p><p class="mu mt-2">${esc(order?.status || "processing")}</p></div><button class="btn gold w-full rounded-xl py-3 mt-4" onclick="cl();nav('home')">${t("close")}</button>`,
     );
+  } catch (error) {
+    await loadCurrentProfile();
+    sheet(`<div class="text-center"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" style="margin:0 auto"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg><h3 class="text-xl font-bold mt-3">${t("uerr")}</h3><p class="mu mt-2">${esc(error?.message || t("uerr"))}</p></div><button class="btn gold w-full rounded-xl py-3 mt-4" onclick="cl()">${t("close")}</button>`);
   }
 }
 function lack(m) {
