@@ -276,12 +276,17 @@ async function loadTopUps() {
     upd();
   } catch (_) {}
 }
+function ucAmountFromName(name) {
+  const value = String(name ?? "").replaceAll(",", "");
+  const expression = value.match(/([\d\s+]+)\s*UC\b/i)?.[1] ?? value;
+  return (expression.match(/\d+/g) ?? []).reduce((total, part) => total + Number(part), 0);
+}
 async function loadProducts() {
   try {
     const result = await window.__FLEX_API__.getProducts();
     const catalog = result.products ?? {};
     UC = (catalog.pubg?.offers ?? []).map((item) => {
-      const amount = Number(String(item.name ?? "").replaceAll(",", "").match(/\d+/)?.[0] ?? 0);
+      const amount = ucAmountFromName(item.name);
       return [amount, Number(item.priceUzs), String(item.id), item.name];
     }).filter(([amount, price]) => amount > 0 && Number.isFinite(price));
     PR = (catalog.telegramPremium ?? []).map((item) => [Number(item.months), Number(item.priceUzs)])
