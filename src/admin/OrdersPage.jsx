@@ -6,6 +6,8 @@ const statusLabels = {
   awaiting_payment: "To‘lov kutilmoqda",
   created: "Yaratildi",
   processing: "Bajarilmoqda",
+  partial: "Qisman bajarildi",
+  manual_review: "Qo‘lda tekshiriladi",
   completed: "Bajarildi",
   failed: "Xato",
   refunded: "Qaytarildi",
@@ -71,21 +73,28 @@ function OrderModal({ id, onClose }) {
       </div>
       <DetailSection icon="orders" title="Zakaz ma’lumotlari">
         <Detail label="Zakaz ID" value={order.id} copy />
-        <Detail label="Provider ID" value={order.providerOrderId} copy />
         <Detail label="Mijoz narxi" value={money(order.chargedUzs)} />
         <Detail label="API narxi" value={usd(order.costUsd)} />
         {order.product?.quantity != null && <Detail label="Miqdor" value={order.product.quantity} />}
         {order.product?.months != null && <Detail label="Obuna muddati" value={`${order.product.months} oy`} />}
         {order.product?.offerId && <Detail label="Paket ID" value={order.product.offerId} copy />}
       </DetailSection>
-      <DetailSection icon="user" title="Sotib olgan mijoz">
+      <DetailSection icon="user" title="Kim sotib oldi">
         <Detail label="Ism va familiya" value={personName(order.user)} />
         <Detail label="Telegram username" value={telegramName(order.user?.username)} copy />
         <Detail label="Telegram ID" value={order.user?.telegramId} copy />
         <Detail label="Mijoz ID" value={order.user?.id} copy />
       </DetailSection>
-      <DetailSection icon="game" title="Qabul qiluvchi akkaunt">
+      <DetailSection icon="game" title="Kim uchun — qabul qiluvchi akkaunt">
         {order.type === "pubg_uc" ? <><Detail label="Player ID" value={order.recipient?.playerId} copy /><Detail label="Player nomi" value={order.recipient?.playerName} /></> : <Detail label="Telegram username" value={telegramName(order.recipient?.telegramUsername)} copy />}
+      </DetailSection>
+      <DetailSection icon="package" title="Qaysi accountdan bajarildi">
+        <Detail label="Provider" value={order.provider === "lootbar" ? "Lootbar" : order.provider === "fragment" ? "Fragment API" : order.provider} />
+        <Detail label="Bajaruvchi account" value={order.providerAccount} copy />
+        <Detail label="Provider order ID" value={order.providerOrderId} copy />
+        <Detail label="Provider reference" value={order.providerReferenceId} copy />
+        <Detail label="Amal holati" value={statusLabels[order.status] || order.status} />
+        <Detail label="To‘lov usuli" value={order.providerPayload?.result?.payment_method || order.providerPayload?.payment_method || order.providerPayload?.response?.result?.payment_method} />
       </DetailSection>
       <DetailSection icon="wallet" title="To‘lov ma’lumotlari">
         <Detail label="To‘lov summasi" value={order.paymentAmountUzs != null ? money(order.paymentAmountUzs) : "—"} />
@@ -102,7 +111,7 @@ function OrderModal({ id, onClose }) {
         <Detail label="Bajarilgan" value={dateTime(order.completedAt)} />
         {order.refundedAt && <Detail label="Qaytarilgan" value={dateTime(order.refundedAt)} />}
       </DetailSection>
-      {order.failureReason && <div className="order-failure"><Icon name="info" size={17} /><div><strong>Xato sababi</strong><p>{order.failureReason}</p></div></div>}
+      {order.failureReason && <div className="order-failure"><Icon name="info" size={17} /><div><strong>{["cancelled", "refunded"].includes(order.status) ? "Bekor bo‘lish / qaytarish sababi" : "Xato sababi"}</strong><p>{order.failureReason}</p></div></div>}
       <details className="order-provider-response"><summary><Icon name="package" size={15} />Provider javobi<Icon name="chevron-right" size={15} /></summary><pre>{JSON.stringify(order.providerPayload ?? {}, null, 2)}</pre></details>
     </>}
   </Modal>;

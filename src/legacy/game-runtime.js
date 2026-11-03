@@ -104,6 +104,10 @@ const D = {
   s4: ["Balans 1-3 daqiqada to'ldiriladi.", "Баланс пополнится за 1-3 минуты."],
   exp: ["Vaqt tugadi — to'lov bekor qilindi", "Время вышло — платёж отменён"],
   chkg: ["Tekshirilmoqda...", "Проверяем..."],
+  paidWait: [
+    "Balans 1-3 daqiqada to'ldiriladi. To'lov tekshirilmoqda...",
+    "Баланс пополнится за 1-3 минуты. Проверяем платёж...",
+  ],
   ok: ["Balans to'ldirildi", "Баланс пополнен"],
   succ: ["Muvaffaqiyatli harid qilindi!", "Покупка успешно совершена!"],
   topH: ["To'ldirish", "Пополнение"],
@@ -646,7 +650,7 @@ function showTopUp(topUp) {
 <div class="text-xl font-bold tracking-widest mb-3">${esc(formattedCardNumber)}</div>
 <div class="flex justify-between items-center"><div><div class="text-[10px]" style="color:#8A94A3">${t("hold")}</div><div class="text-sm font-bold">${esc(c.holder || "")}</div></div><button class="btn gold rounded-lg px-3 py-2 text-xs" onclick="cp('${cardNumber.replace(/\D/g, "")}',this)">${t("cp")}</button></div></div>
 <ol class="text-sm mu space-y-1 mb-4 list-decimal pl-5"><li>${t("s1")}</li><li>${t("s2").replace("{a}", fm(amt))}</li><li>${t("s3")}</li><li>${t("s4")}</li></ol>
-<div id="topup-live-status" class="p-3 rounded-xl text-center text-sm font-bold mb-3" style="background:rgba(245,196,81,.10);color:var(--gd)">${t("chkg")}</div>
+<button id="topup-live-status" type="button" class="btn gold w-full rounded-xl py-3 text-sm font-bold mb-3" onclick="confirmTopUpPayment()">${t("paid")}</button>
 <button class="btn w-full rounded-xl py-3 mu" onclick="cl()">${t("close")}</button>`);
   tick();
   watchTopUp();
@@ -685,6 +689,15 @@ async function watchTopUp() {
   await check();
   if (!currentTopUp?.id || !$("#ov").classList.contains("on") || ["completed", "expired", "rejected"].includes(currentTopUp.status)) return;
   topUpPollTimer = setInterval(check, 2000);
+}
+function confirmTopUpPayment() {
+  const button = $("#topup-live-status");
+  if (!button || button.disabled) return;
+  button.disabled = true;
+  button.textContent = t("paidWait");
+  button.style.background = "rgba(245,196,81,.10)";
+  button.style.color = "var(--gd)";
+  watchTopUp();
 }
 function tick() {
   let s = Math.max(0, Math.ceil((new Date(currentTopUp?.expiresAt).getTime() - Date.now()) / 1000)) || 420;
@@ -763,7 +776,7 @@ function upd() {
   const allHistory = [...topUpRows, ...H];
   const A = allHistory.filter((x) => hf === "all" || x.s === hf);
   $("#hl").innerHTML = A.length ? A.map(row).join("") : crate();
-  const W = H.filter((x) => x.s !== "c");
+  const W = [...topUpRows, ...H];
   $("#wl").innerHTML = W.length
     ? W.map(row).join("")
     : `<div class="mu text-sm text-center py-6">${t("noop")}</div>`;
