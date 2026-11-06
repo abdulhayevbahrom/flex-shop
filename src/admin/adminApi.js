@@ -42,6 +42,7 @@ export const adminApi = {
   setBotStatus: (enabled) => request("/bot", { method: "PATCH", body: JSON.stringify({ enabled }) }),
   orders: (params = {}) => request(`/orders?${new URLSearchParams(params)}`),
   order: (id) => request(`/orders/${id}`),
+  topUp: (id) => request(`/top-ups/${id}`),
   statistics: (month) => request(`/statistics?${new URLSearchParams({ month })}`),
   paymentCards: () => request("/payment-cards"),
   createPaymentCard: (data) => request("/payment-cards", { method: "POST", body: JSON.stringify(data) }),
