@@ -24,9 +24,7 @@ function TelegramUser({ user, showName = false }) {
   const username = user?.username ? String(user.username).replace(/^@/, "") : "";
   const telegramId = user?.telegramId ? String(user.telegramId).trim() : "";
   const content = showName ? personName(user) : username ? `@${username}` : user?.telegramId || "—";
-  const profileUrl = username
-    ? `https://t.me/${encodeURIComponent(username)}`
-    : telegramId ? `https://t.me/user?id=${encodeURIComponent(telegramId)}` : "";
+  const profileUrl = username ? `https://t.me/${encodeURIComponent(username)}` : "";
   function openProfile(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -41,9 +39,18 @@ function TelegramUser({ user, showName = false }) {
     }
     window.open(profileUrl, "_blank", "noopener,noreferrer");
   }
-  return profileUrl
-    ? <a className="telegram-profile-link" href={profileUrl} target="_blank" rel="noreferrer" onClick={openProfile}>{content}<Icon name="arrow-right" size={11} /></a>
-    : "—";
+  async function copyTelegramId(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    try { await navigator.clipboard.writeText(telegramId); } catch { /* Native xabar baribir IDni ko‘rsatadi. */ }
+    const message = `Bu mijozda username yo‘q. Telegram ID nusxalandi: ${telegramId}`;
+    const telegram = window.Telegram?.WebApp;
+    if (typeof telegram?.showAlert === "function") telegram.showAlert(message);
+    else window.alert(message);
+  }
+  if (profileUrl) return <a className="telegram-profile-link" href={profileUrl} target="_blank" rel="noreferrer" onClick={openProfile}>{content}<Icon name="arrow-right" size={11} /></a>;
+  if (telegramId) return <button type="button" className="telegram-profile-link telegram-id-copy" onClick={copyTelegramId} title="Telegram IDni nusxalash">{content}<Icon name="copy" size={11} /></button>;
+  return "—";
 }
 
 function Status({ value }) {
