@@ -22,10 +22,14 @@ const shortId = (value) => value ? `#${String(value).slice(-8).toUpperCase()}` :
 
 function TelegramUser({ user, showName = false }) {
   const username = user?.username ? String(user.username).replace(/^@/, "") : "";
+  const telegramId = user?.telegramId ? String(user.telegramId).trim() : "";
   const content = showName ? personName(user) : username ? `@${username}` : user?.telegramId || "—";
-  return username
-    ? <a className="telegram-profile-link" href={`https://t.me/${encodeURIComponent(username)}`} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{content}<Icon name="arrow-right" size={11} /></a>
-    : content;
+  const profileUrl = username
+    ? `https://t.me/${encodeURIComponent(username)}`
+    : telegramId ? `tg://user?id=${encodeURIComponent(telegramId)}` : "";
+  return profileUrl
+    ? <a className="telegram-profile-link" href={profileUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{content}<Icon name="arrow-right" size={11} /></a>
+    : "—";
 }
 
 function Status({ value }) {
