@@ -26,9 +26,23 @@ function TelegramUser({ user, showName = false }) {
   const content = showName ? personName(user) : username ? `@${username}` : user?.telegramId || "—";
   const profileUrl = username
     ? `https://t.me/${encodeURIComponent(username)}`
-    : telegramId ? `tg://user?id=${encodeURIComponent(telegramId)}` : "";
+    : telegramId ? `https://t.me/user?id=${encodeURIComponent(telegramId)}` : "";
+  function openProfile(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const telegram = window.Telegram?.WebApp;
+    if (telegram?.initData && typeof telegram.openTelegramLink === "function") {
+      try {
+        telegram.openTelegramLink(profileUrl);
+        return;
+      } catch {
+        // Eski Telegram klientlarida oddiy tashqi oynaga fallback qilamiz.
+      }
+    }
+    window.open(profileUrl, "_blank", "noopener,noreferrer");
+  }
   return profileUrl
-    ? <a className="telegram-profile-link" href={profileUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{content}<Icon name="arrow-right" size={11} /></a>
+    ? <a className="telegram-profile-link" href={profileUrl} target="_blank" rel="noreferrer" onClick={openProfile}>{content}<Icon name="arrow-right" size={11} /></a>
     : "—";
 }
 
